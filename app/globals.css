@@ -1,9 +1,9 @@
 :root{--bg:#f4f8ff;--blue:#2f7df6;--lb:#e3efff;--ink:#1c2b3f;--line:#d6e4fb}
-*{box-sizing:border-box}body{margin:0;font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(--bg);color:var(--ink)}
+*{box-sizing:border-box}body{margin:0;background:#fde4e8;font-family:-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(--bg);color:var(--ink)}
 button,input,select{font:inherit;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
 button{cursor:pointer}button:disabled{opacity:.5}a{color:var(--blue)}
 .primary{background:var(--blue);color:#fff;border-color:var(--blue)}.danger{color:#c62828}.err{color:#c62828;min-height:1.5em}.ok{color:#1b7a3d;font-size:1.3rem;font-weight:700}
-.kiosk{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;background:linear-gradient(#fff,var(--lb))}
+.kiosk{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;}
 .kiosk h1{font-size:clamp(1.6rem,5vw,2.6rem);margin:0;text-align:center}
 .dots{display:flex;gap:18px;font-size:3rem;color:var(--blue)}
 .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:min(420px,92vw)}
@@ -19,7 +19,7 @@ button{cursor:pointer}button:disabled{opacity:.5}a{color:var(--blue)}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px}
 .card2{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column}.card2 span{font-size:.85rem;color:#58708f}.card2 b{font-size:1.9rem}
 .card2.warn{background:#fff4e0;border-color:#f0b35a}.card2.bad{background:#ffe5e5;border-color:#e57373}
-.alertbox{background:#fff4e0;border:1px solid #f0b35a;border-radius:12px;padding:12px;margin-bottom:12px;font-weight:600}.codebig{font-size:2.6rem;letter-spacing:.2em}
+.alertbox{background:#fff4e0;border:1px solid #f0b35a;border-radius:12px;padding:12px;margin-bottom:12px;font-weight:600}.codebig{font-size:1.9rem;letter-spacing:.15em;color:#1c2b3f}
 .tablewrap{overflow-x:auto;background:#fff;border:1px solid var(--line);border-radius:14px}table{border-collapse:collapse;width:100%;min-width:760px}
 th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{background:var(--lb);font-size:.85rem}.rowalert{background:#fff1f1}.empty{text-align:center;color:#58708f;padding:24px}
 .act{display:flex;gap:6px}.act button{padding:6px 10px;font-size:.85rem}small{color:#58708f}
@@ -29,6 +29,13 @@ th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;white-spa
 .stu{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:8px;max-width:960px}.stu summary{cursor:pointer;font-weight:700}
 .row{display:flex;justify-content:space-between;gap:10px;align-items:center}
 @media print{.nav,.bar,.chips,.noprint,.staff{display:none!important}body{background:#fff}}
-   .alertbox.big{height:auto;font-size:1rem;line-height:1.7;background:#fff4e0;color:#1c2b3f;border:1px solid #f0b35a;border-radius:12px}
-   .alertbox.big button{margin-left:8px;padding:6px 12px;font-size:.9rem;height:auto;background:#fff;color:#1c2b3f;border:1px solid #d6e4fb}
-   .codebig{font-size:1.9rem;letter-spacing:.15em;color:#1c2b3f}
+.codebox{color:#1c2b3f;font-size:1rem;line-height:1.7;font-weight:600}.codebox button{margin-left:8px;padding:6px 12px;font-size:.9rem}
+
+body::before{content:'';position:fixed;inset:0;background:url('/bg.jpg') center/cover no-repeat;z-index:-1}
+.overlay{position:fixed;inset:0;background:rgba(60,20,30,.35);display:grid;place-items:center;padding:16px;z-index:50}
+.popup{background:#fff;border-radius:28px;padding:32px 24px;width:min(460px,94vw);text-align:center;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 40px rgba(0,0,0,.2)}
+.hearts{font-size:3rem}.pname{margin:0;font-size:1.2rem;color:#c2476b;font-weight:700}
+.pmsg{margin:0;font-size:1.5rem;line-height:1.6;font-weight:700;color:#1c2b3f;word-break:keep-all}
+.alertbox.big{height:auto;font-size:1rem;line-height:1.7;background:#fff4e0;color:#1c2b3f;border:1px solid #f0b35a;border-radius:12px}
+.alertbox.big button{margin-left:8px;padding:6px 12px;font-size:.9rem;height:auto;background:#fff;color:#1c2b3f;border:1px solid #d6e4fb}
+@media print{body::before{display:none}}
