@@ -4,14 +4,17 @@ export const STATUS: Record<string, { label: string; cls: string }> = {
   present: { label: '출석', cls: 's-present' },
   late: { label: '지각', cls: 's-late' },
   soon: { label: '퇴실 예정', cls: 's-soon' },
-  requested: { label: '퇴실 요청', cls: 's-requested' },
-  overdue: { label: '퇴실 확인 필요', cls: 's-overdue' },
-  done: { label: '퇴실 완료', cls: 's-done' },
+  done: { label: '퇴실', cls: 's-done' },
   absent: { label: '결석', cls: 's-absent' }
 }
 export const seoulDate = (d = new Date()) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(d)
 export const hm = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Seoul' }) : '-'
+export const fmtPhone = (v?: string | null) => {
+  const d = String(v ?? '').replace(/\D/g, '')
+  if (!d) return '-'
+  return d.length === 11 ? d.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3') : d.length === 10 ? d.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3') : d
+}
 export const isoWeekday = (date: string) => { const g = new Date(date + 'T00:00:00Z').getUTCDay(); return g === 0 ? 7 : g }
 const minOfDay = (d: Date) => {
   const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false }).format(d).split(':')
@@ -19,12 +22,12 @@ const minOfDay = (d: Date) => {
 }
 const toMin = (t: string) => +t.slice(0, 2) * 60 + +t.slice(3, 5)
 
+// 진행 중 세션의 상태. 수업 시간이 끝나면 자동으로 '퇴실' (서버도 매분/요청 시 같은 처리를 저장)
 export function sessionState(s: any, now: Date, warn: number) {
   if (s.status === 'absent') return 'absent'
   if (s.status === 'checked_out') return 'done'
-  if (s.status === 'checkout_requested') return 'requested'
   const rem = (new Date(s.scheduled_checkout_at).getTime() - now.getTime()) / 60000
-  if (rem <= 0) return 'overdue'
+  if (rem <= 0) return 'done'
   if (rem <= warn) return 'soon'
   return s.is_late ? 'late' : 'present'
 }
@@ -35,12 +38,15 @@ export function buildRows(date: string, now: Date, students: any[], schedules: a
   const today = seoulDate(now)
   const rows: any[] = []
   const withSession = new Set<string>()
+  const base = (st: any) => ({ school: st?.class_name, grade: st?.grade, gphone: st?.guardian_phone, sphone: st?.student_phone })
   for (const s of sessions) {
     withSession.add(s.student_id)
     const st = byId.get(s.student_id)
     const sch = schedules.find((x) => x.student_id === s.student_id && x.weekday === dow)
-    rows.push({ key: s.id, session: s, student_id: s.student_id, name: s.student_name, class_name: st?.class_name,
-      expected: sch?.expected_start_time, state: sessionState(s, now, cfg.warn_before_minutes), alert: false })
+    const state = sessionState(s, now, cfg.warn_before_minutes)
+    rows.push({ key: s.id, session: s, student_id: s.student_id, name: s.student_name, ...base(st),
+      expected: sch?.expected_start_time, state, alert: false,
+      outAt: s.actual_checkout_at || (state === 'done' && s.status !== 'absent' ? s.scheduled_checkout_at : null) })
   }
   for (const sch of schedules) {
     if (sch.weekday !== dow || withSession.has(sch.student_id)) continue
@@ -54,8 +60,9 @@ export function buildRows(date: string, now: Date, students: any[], schedules: a
       const n = minOfDay(now), start = toMin(sch.expected_start_time)
       if (n >= start) { state = 'unarrived'; alert = n >= start + cfg.late_grace_minutes }
     }
-    rows.push({ key: 'p' + sch.student_id, session: null, student_id: sch.student_id, name: st.name,
-      class_name: st.class_name, expected: sch.expected_start_time, state, alert })
+    rows.push({ key: 'p' + sch.student_id, session: null, student_id: sch.student_id, name: st.name, ...base(st),
+      expected: sch.expected_start_time, state, alert, outAt: null })
   }
-  return rows.sort((a, b) => (a.expected || '99').localeCompare(b.expected || '99') || a.name.localeCompare(b.name, 'ko'))
+  const pri = (r: any) => (r.state === 'unarrived' ? (r.alert ? 0 : 1) : 2)
+  return rows.sort((a, b) => pri(a) - pri(b) || (a.expected || '99').localeCompare(b.expected || '99') || a.name.localeCompare(b.name, 'ko'))
 }

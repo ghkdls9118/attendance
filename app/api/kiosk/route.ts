@@ -23,11 +23,14 @@ export async function POST(req: NextRequest) {
   await db.rpc('kiosk_log_attempt', { p_device: dev, p_success: !!st })
   if (!st) return out({ error: 'INVALID' }, 401)  // 이름 등 어떤 정보도 반환하지 않음
 
+  await db.rpc('close_expired')
   let notice: string | null = null
+  let outAt: string | null = null
   if (action !== 'lookup') {
     const r = action === 'checkin'
       ? await db.rpc('check_in', { p_student: st.id })
-      : await db.rpc('request_checkout', { p_student: st.id })
+      : await db.rpc('student_check_out', { p_student: st.id })
+    if (!r.error && action === 'checkout') outAt = r.data?.actual_checkout_at ?? null
     if (r.error) {
       const k = ['ALREADY_CHECKED_IN', 'NO_SCHEDULE', 'STUDENT_INACTIVE', 'NOT_CHECKED_IN'].find((x) => r.error!.message.includes(x))
       if (!k) return out({ error: 'SERVER' }, 500)
@@ -37,5 +40,5 @@ export async function POST(req: NextRequest) {
   }
   const { data: sess } = await db.from('attendance_sessions').select('check_in_at,scheduled_checkout_at,status')
     .eq('student_id', st.id).in('status', ['checked_in', 'checkout_requested']).maybeSingle()
-  return out({ name: st.name, state: sess ? 'in' : 'out', session: sess, serverNow: new Date().toISOString(), notice })
+  return out({ name: st.name, state: sess ? 'in' : 'out', session: sess, serverNow: new Date().toISOString(), notice, out_at: outAt })
 }

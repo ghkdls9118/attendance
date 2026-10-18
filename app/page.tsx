@@ -45,7 +45,7 @@ export default function Kiosk() {
     const j = await call(action, code)
     if (!j) { setInfo(null); return }
     setInfo(j)
-    setDone(action === 'checkin' ? '입실이 완료되었습니다.' : '퇴실 요청을 선생님께 보냈어요. 선생님이 확인할 때까지 기다려 주세요.')
+    setDone(action === 'checkin' ? '입실이 완료되었습니다.' : '퇴실이 완료되었습니다. 안녕히 가세요!')
     if (action === 'checkin' && !j.notice) { setPopup(CHEER[Math.floor(Math.random() * CHEER.length)]); arm(30000) } else arm(12000)
   }
   const remain = (iso: string) => Math.max(0, Math.ceil((new Date(iso).getTime() - (Date.now() + offset.current)) / 60000))
@@ -75,10 +75,10 @@ export default function Kiosk() {
               <p>입실 시각 <b>{hm(s.check_in_at)}</b></p>
               <p>퇴실 예정 <b>{hm(s.scheduled_checkout_at)}</b></p>
               <p>남은 수업 시간 <b>{remain(s.scheduled_checkout_at)}분</b></p>
-              {s.status === 'checkout_requested' && !done && <p className="ok">퇴실 요청 중이에요.</p>}
-              {s.status === 'checked_in' && !done && <button className="big warn" disabled={busy} onClick={() => act('checkout')}>퇴실 요청</button>}
+              {!done && <button className="big warn" disabled={busy} onClick={() => act('checkout')}>퇴실하기</button>}
             </>
           ) : !done ? <button className="big" disabled={busy} onClick={() => act('checkin')}>입실 등록</button> : null}
+          {done && !s && info.out_at && <p>퇴실 시각 <b>{hm(info.out_at)}</b></p>}
           <button className="big sub" onClick={reset}>처음으로</button>
         </div>
       )}

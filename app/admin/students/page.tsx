@@ -3,10 +3,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { browserClient } from '@/lib/supabase-browser'
 import { api } from '../api'
 import { roleOf } from '../role'
+const fmt = (v: any) => { const d = String(v ?? '').replace(/\D/g, ''); return d.length === 11 ? d.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3') : d.length === 10 ? d.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3') : d }
 const DAYS = ['', '월', '화', '수', '목', '금', '토', '일']
 
 function Student({ s, sch, isAdmin, reload, showCode }: any) {
-  const [f, setF] = useState({ name: s.name, grade: s.grade ?? '', class_name: s.class_name ?? '' })
+  const [f, setF] = useState({ name: s.name, grade: s.grade ?? '', class_name: s.class_name ?? '', guardian_phone: fmt(s.guardian_phone), student_phone: fmt(s.student_phone) })
   const [items, setItems] = useState<any[]>(sch.map((x: any) => ({ weekday: x.weekday, time: x.expected_start_time.slice(0, 5), minutes: x.duration_minutes })))
   const done = async (body: any) => { const j = await api({ student_id: s.id, ...body }); if (j) { if (j.code) showCode(s.name, j.code); reload() } }
   return (
@@ -15,7 +16,9 @@ function Student({ s, sch, isAdmin, reload, showCode }: any) {
       <div className="form">
         <input value={f.name} disabled={!isAdmin} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="이름" />
         <input value={f.grade} disabled={!isAdmin} onChange={(e) => setF({ ...f, grade: e.target.value })} placeholder="학년" type="number" />
-        <input value={f.class_name} disabled={!isAdmin} onChange={(e) => setF({ ...f, class_name: e.target.value })} placeholder="반" />
+        <input value={f.class_name} disabled={!isAdmin} onChange={(e) => setF({ ...f, class_name: e.target.value })} placeholder="학교" />
+        <input value={f.guardian_phone} disabled={!isAdmin} onChange={(e) => setF({ ...f, guardian_phone: e.target.value })} placeholder="학부모 전화번호" />
+        <input value={f.student_phone} disabled={!isAdmin} onChange={(e) => setF({ ...f, student_phone: e.target.value })} placeholder="학생 전화번호" />
         {isAdmin && <button onClick={() => done({ action: 'student_update', ...f })}>정보 저장</button>}
       </div>
       <h4>수업 시간표</h4>
@@ -45,17 +48,17 @@ export default function Students() {
   const [list, setList] = useState<any[]>([]), [sch, setSch] = useState<any[]>([])
   const [isAdmin, setIsAdmin] = useState(false)
   const [code, setCode] = useState<{ n: string; c: string } | null>(null)
-  const [f, setF] = useState({ name: '', grade: '', class_name: '', guardian_phone: '' })
+  const [f, setF] = useState({ name: '', grade: '', class_name: '', guardian_phone: '', student_phone: '' })
   useEffect(() => setIsAdmin(roleOf() === 'admin'), [])
   const reload = useCallback(async () => {
-    const a = await sb.from('students').select('id,name,grade,class_name,active').order('name')
+    const a = await sb.from('students').select('id,name,grade,class_name,active,guardian_phone,student_phone').order('name')
     const b = await sb.from('schedules').select('*').order('weekday')
     setList(a.data || []); setSch(b.data || [])
   }, [sb])
   useEffect(() => { reload() }, [reload])
   async function add() {
     const j = await api({ action: 'student_create', ...f })
-    if (j) { setCode({ n: j.name, c: j.code }); setF({ name: '', grade: '', class_name: '', guardian_phone: '' }); reload() }
+    if (j) { setCode({ n: j.name, c: j.code }); setF({ name: '', grade: '', class_name: '', guardian_phone: '', student_phone: '' }); reload() }
   }
   return (
     <div>
@@ -63,8 +66,9 @@ export default function Students() {
       {isAdmin && <div className="panel"><h3>학생 등록</h3><div className="form">
         <input placeholder="이름" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
         <input placeholder="학년" type="number" value={f.grade} onChange={(e) => setF({ ...f, grade: e.target.value })} />
-        <input placeholder="반" value={f.class_name} onChange={(e) => setF({ ...f, class_name: e.target.value })} />
-        <input placeholder="보호자 연락처(선택)" value={f.guardian_phone} onChange={(e) => setF({ ...f, guardian_phone: e.target.value })} />
+        <input placeholder="학교" value={f.class_name} onChange={(e) => setF({ ...f, class_name: e.target.value })} />
+        <input placeholder="학부모 전화번호" value={f.guardian_phone} onChange={(e) => setF({ ...f, guardian_phone: e.target.value })} />
+        <input placeholder="학생 전화번호" value={f.student_phone} onChange={(e) => setF({ ...f, student_phone: e.target.value })} />
         <button className="primary" onClick={add}>등록 · 번호 발급</button>
       </div></div>}
       {list.map((s) => <Student key={s.id + s.active + JSON.stringify(sch.filter((x) => x.student_id === s.id))} s={s} sch={sch.filter((x) => x.student_id === s.id)} isAdmin={isAdmin} reload={reload} showCode={(n: string, c: string) => setCode({ n, c })} />)}

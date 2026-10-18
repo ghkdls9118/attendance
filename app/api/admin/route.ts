@@ -5,6 +5,7 @@ import { requireStaff } from '@/lib/supabase-server'
 export const dynamic = 'force-dynamic'
 const out = (b: any, s = 200) => NextResponse.json(b, { status: s })
 const str = (v: any, max = 100) => (typeof v === 'string' ? v.trim().slice(0, max) : '')
+const phoneOf = (v: any) => { const d = String(v ?? '').replace(/\D/g, ''); if (!d) return null; if (!/^\d{9,11}$/.test(d)) throw new Error('전화번호 형식이 올바르지 않습니다. 예: 010-1234-5678'); return d }
 const UUID = /^[0-9a-f-]{36}$/i
 
 export async function POST(req: NextRequest) {
@@ -22,14 +23,9 @@ export async function POST(req: NextRequest) {
 
   try {
     switch (b.action) {
-      case 'complete_checkout':
-        must(await db.rpc('complete_checkout', { p_session: b.session_id, p_actor: uid })); return out({ ok: true })
+      case 'sweep':
+        await db.rpc('close_expired'); return out({ ok: true })
 
-      case 'extend': {
-        adminOnly()
-        must(await db.rpc('extend_session', { p_session: b.session_id, p_minutes: Math.floor(+b.minutes), p_reason: str(b.reason, 300), p_actor: uid }))
-        return out({ ok: true })
-      }
       case 'absent': {
         const reason = needReason(), date = str(b.date, 10)
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('날짜 오류')
@@ -67,7 +63,7 @@ export async function POST(req: NextRequest) {
         const name = str(b.name, 40); if (!name) throw new Error('이름을 입력하세요.')
         for (let i = 0; i < 400; i++) {
           const code = randomCode()
-          const r = await db.from('students').insert({ name, grade: b.grade ? +b.grade : null, class_name: str(b.class_name, 40) || null, guardian_phone: str(b.guardian_phone, 20) || null, attendance_code_hash: hashCode(code) }).select('id,name').single()
+          const r = await db.from('students').insert({ name, grade: b.grade ? +b.grade : null, class_name: str(b.class_name, 40) || null, guardian_phone: phoneOf(b.guardian_phone), student_phone: phoneOf(b.student_phone), attendance_code_hash: hashCode(code) }).select('id,name').single()
           if (r.error?.code === '23505') continue
           const row = must(r); await log('student_create', 'student', row.id, null, { name }); return out({ ok: true, code, name })
         }
@@ -80,10 +76,12 @@ export async function POST(req: NextRequest) {
         if (b.grade !== undefined) patch.grade = b.grade ? +b.grade : null
         if (b.class_name !== undefined) patch.class_name = str(b.class_name, 40) || null
         if (b.active !== undefined) patch.active = !!b.active
-        if (b.guardian_phone !== undefined) patch.guardian_phone = str(b.guardian_phone, 20) || null
+        if (b.guardian_phone !== undefined) patch.guardian_phone = phoneOf(b.guardian_phone)
+        if (b.student_phone !== undefined) patch.student_phone = phoneOf(b.student_phone)
         const old = must(await db.from('students').select('name,grade,class_name,active').eq('id', b.student_id).single())
         must(await db.from('students').update(patch).eq('id', b.student_id))
-        await log('student_update', 'student', b.student_id, old, patch); return out({ ok: true })
+        const { guardian_phone: gp, student_phone: sp, ...safe } = patch
+        await log('student_update', 'student', b.student_id, old, { ...safe, ...(gp !== undefined || sp !== undefined ? { phone_changed: true } : {}) }); return out({ ok: true })
       }
       case 'reset_code': {
         adminOnly()
