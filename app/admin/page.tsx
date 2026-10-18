@@ -1,12 +1,15 @@
 'use client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { browserClient } from '@/lib/supabase-browser'
-import { STATUS, buildRows, hm, seoulDate, fmtPhone } from '@/lib/status'
+import { STATUS, buildRows, hm, seoulDate, fmtPhone, isoWeekday } from '@/lib/status'
 import { api } from './api'
 import { roleOf } from './role'
 
 const FILTERS: Record<string, string[] | null> = { all: null, in: ['present', 'late', 'soon'], unarrived: ['unarrived'], leaving: ['soon'], absent: ['absent'] }
 const FLABEL: Record<string, string> = { all: '전체', in: '현재 입실', unarrived: '미도착', leaving: '퇴실 예정', absent: '결석' }
+
+const addDays = (d: string, n: number) => { const t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10) }
+const DAYN = ['월', '화', '수', '목', '금', '토', '일']
 
 export default function Dashboard() {
   const sb = useMemo(() => browserClient(), [])
@@ -50,6 +53,15 @@ export default function Dashboard() {
   const count = (...s: string[]) => rows.filter((r) => s.includes(r.state)).length
   const shown = rows.filter((r) => (!FILTERS[flt] || FILTERS[flt]!.includes(r.state)) && (!q || r.name.includes(q)) && (!school || r.school === school))
   const waiting = rows.filter((r) => r.state === 'unarrived')
+  const today = seoulDate(now)
+  const monday = addDays(date, -(isoWeekday(date) - 1))
+  const perDay = useMemo(() => {
+    const m: Record<number, Set<string>> = {}
+    const act = new Set((data?.st || []).filter((x: any) => x.active).map((x: any) => x.id))
+    for (const x of data?.sc || []) if (act.has(x.student_id)) (m[x.weekday] = m[x.weekday] || new Set()).add(x.student_id)
+    return m
+  }, [data])
+  const days = [0, 1, 2, 3, 4, 5, 6].filter((i) => i < 5 || (perDay[i + 1] && perDay[i + 1].size) || addDays(monday, i) === date || addDays(monday, i) === today)
 
   useEffect(() => {
     document.title = (waiting.length ? `(${waiting.length}) ` : '') + '출결 대시보드'
@@ -74,6 +86,20 @@ export default function Dashboard() {
         {typeof Notification !== 'undefined' && Notification.permission === 'default' && <button onClick={() => Notification.requestPermission()}>알림 허용</button>}
         <button onClick={() => window.print()}>일일 보고서 인쇄</button>
       </div>
+      <div className="daytabs">
+        <button onClick={() => setDate(addDays(date, -7))}>◀ 이전 주</button>
+        {days.map((i) => {
+          const d = addDays(monday, i)
+          return (
+            <button key={d} className={'daytab' + (d === date ? ' on' : '') + (d === today ? ' today' : '')} onClick={() => setDate(d)}>
+              <b>{DAYN[i]}</b><small>{+d.slice(5, 7)}/{+d.slice(8)}{d === today ? ' 오늘' : ''}</small><span>{(perDay[i + 1] && perDay[i + 1].size) || 0}명</span>
+            </button>
+          )
+        })}
+        <button onClick={() => setDate(addDays(date, 7))}>다음 주 ▶</button>
+        <button onClick={() => setDate(today)}>오늘로</button>
+      </div>
+      <h3 className="daytitle">{DAYN[isoWeekday(date) - 1]}요일 · {date}</h3>
       {err && <p className="err">{err}</p>}
       {waiting.length > 0 && <div className="alertbox" role="alert">⚠ 입실 시간이 지났는데 아직 오지 않은 학생 {waiting.length}명: {waiting.map((a) => a.name).join(', ')}</div>}
       <div className="cards">
