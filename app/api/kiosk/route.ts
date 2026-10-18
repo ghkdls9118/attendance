@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   let b: any
   try { b = await req.json() } catch { return out({ error: 'BAD_REQUEST' }, 400) }
   const { action, code } = b || {}
-  if (!/^\d{4}$/.test(code || '') || !['lookup', 'checkin', 'checkout'].includes(action)) return out({ error: 'BAD_REQUEST' }, 400)
+  if (!/^\d{2}$/.test(code || '') || !['lookup', 'checkin', 'checkout'].includes(action)) return out({ error: 'BAD_REQUEST' }, 400)
 
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'x'
   const dev = createHash('sha256').update(ip + '|' + (req.headers.get('user-agent') || '')).digest('hex').slice(0, 32)

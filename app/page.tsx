@@ -37,9 +37,9 @@ export default function Kiosk() {
     } finally { setBusy(false) }
   }
   async function press(d: string) {
-    if (busy || code.length >= 4) return
+    if (busy || code.length >= 2) return
     const n = code + d; setCode(n); arm()
-    if (n.length === 4) { const j = await call('lookup', n); if (j) { setInfo(j); arm() } }
+    if (n.length === 2) { const j = await call('lookup', n); if (j) { setInfo(j); arm() } }
   }
   async function act(action: 'checkin' | 'checkout') {
     const j = await call(action, code)
@@ -55,8 +55,8 @@ export default function Kiosk() {
     <main className="kiosk">
       {!info ? (
         <>
-          <h1>출석번호 4자리를 눌러요</h1>
-          <div className="dots">{[0, 1, 2, 3].map((i) => <span key={i} className={i < code.length ? 'on' : ''}>{i < code.length ? '●' : '○'}</span>)}</div>
+          <h1>출석번호 2자리를 눌러요</h1>
+          <div className="dots">{[0, 1].map((i) => <span key={i} className={i < code.length ? 'on' : ''}>{i < code.length ? '●' : '○'}</span>)}</div>
           <p className="err" role="alert">{msg || '\u00a0'}</p>
           <div className="pad">
             {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => <button key={d} onClick={() => press(d)}>{d}</button>)}

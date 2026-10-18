@@ -65,13 +65,13 @@ export async function POST(req: NextRequest) {
       case 'student_create': {
         adminOnly()
         const name = str(b.name, 40); if (!name) throw new Error('이름을 입력하세요.')
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 400; i++) {
           const code = randomCode()
           const r = await db.from('students').insert({ name, grade: b.grade ? +b.grade : null, class_name: str(b.class_name, 40) || null, guardian_phone: str(b.guardian_phone, 20) || null, attendance_code_hash: hashCode(code) }).select('id,name').single()
           if (r.error?.code === '23505') continue
           const row = must(r); await log('student_create', 'student', row.id, null, { name }); return out({ ok: true, code, name })
         }
-        throw new Error('번호 발급 실패. 다시 시도하세요.')
+        throw new Error('사용 가능한 번호가 없습니다. 2자리 번호는 최대 100명까지 가능합니다.')
       }
       case 'student_update': {
         adminOnly()
@@ -87,13 +87,13 @@ export async function POST(req: NextRequest) {
       }
       case 'reset_code': {
         adminOnly()
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 400; i++) {
           const code = randomCode()
           const r = await db.from('students').update({ attendance_code_hash: hashCode(code) }).eq('id', b.student_id)
           if (r.error?.code === '23505') continue
           must(r); await log('reset_code', 'student', b.student_id, null, null); return out({ ok: true, code })
         }
-        throw new Error('번호 발급 실패')
+        throw new Error('사용 가능한 번호가 없습니다. 2자리 번호는 최대 100명까지 가능합니다.')
       }
       case 'student_delete': {
         adminOnly()
