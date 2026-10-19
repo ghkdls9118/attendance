@@ -70,16 +70,21 @@ export async function POST(req: NextRequest) {
         p_actor: null
       })
 
-      if (r.error) {
-        const k = [
-          'NOT_CHECKED_IN'
-        ].find((x) => r.error!.message.includes(x))
+            if (r.error) {
+        console.error('[CHECKOUT ERROR]', r.error)
+        return out({
+          error: 'CHECKOUT_FAILED',
+          message: r.error.message
+        }, 500)
+      }
 
-        if (!k) return out({ error: 'SERVER' }, 500)
+      outAt = r.data?.actual_checkout_at ?? null
 
-        notice = k
-      } else {
-        outAt = r.data?.actual_checkout_at ?? null
+      if (!outAt) {
+        console.error('[CHECKOUT ERROR] Missing actual_checkout_at', r.data)
+        return out({
+          error: 'CHECKOUT_TIME_MISSING'
+        }, 500)
       }
     }
   }
