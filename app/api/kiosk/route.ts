@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   if (action !== 'lookup') {
     const r = action === 'checkin'
       ? await db.rpc('check_in', { p_student: st.id })
-      : await db.rpc('student_check_out', { p_student: st.id })
+      : await db.rpc('request_checkout', { p_student: st.id })
     if (!r.error && action === 'checkout') outAt = r.data?.actual_checkout_at ?? null
     if (r.error) {
       const k = ['ALREADY_CHECKED_IN', 'NO_SCHEDULE', 'STUDENT_INACTIVE', 'NOT_CHECKED_IN'].find((x) => r.error!.message.includes(x))
