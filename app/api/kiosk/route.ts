@@ -88,3 +88,19 @@ export async function POST(req: NextRequest) {
       }
     }
   }
+  const { data: sess } = await db
+    .from('attendance_sessions')
+    .select('check_in_at,scheduled_checkout_at,status')
+    .eq('student_id', st.id)
+    .in('status', ['checked_in', 'checkout_requested'])
+    .maybeSingle()
+
+  return out({
+    name: st.name,
+    state: sess ? 'in' : 'out',
+    session: sess,
+    serverNow: new Date().toISOString(),
+    notice,
+    out_at: outAt
+  })
+}
