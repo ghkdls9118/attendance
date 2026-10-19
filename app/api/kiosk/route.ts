@@ -24,21 +24,62 @@ export async function POST(req: NextRequest) {
   if (!st) return out({ error: 'INVALID' }, 401)  // 이름 등 어떤 정보도 반환하지 않음
 
   await db.rpc('close_expired')
-  let notice: string | null = null
+    let notice: string | null = null
   let outAt: string | null = null
-  if (action !== 'lookup') {
-    const r = action === 'checkin'
-      ? await db.rpc('check_in', { p_student: st.id })
-      : await db.rpc('request_checkout', { p_student: st.id })
-    if (!r.error && action === 'checkout') outAt = r.data?.actual_checkout_at ?? null
+
+  if (action === 'checkin') {
+    const r = await db.rpc('check_in', { p_student: st.id })
+
     if (r.error) {
-      const k = ['ALREADY_CHECKED_IN', 'NO_SCHEDULE', 'STUDENT_INACTIVE', 'NOT_CHECKED_IN'].find((x) => r.error!.message.includes(x))
+      const k = [
+        'ALREADY_CHECKED_IN',
+        'NO_SCHEDULE',
+        'STUDENT_INACTIVE',
+        'NOT_CHECKED_IN'
+      ].find((x) => r.error!.message.includes(x))
+
       if (!k) return out({ error: 'SERVER' }, 500)
-      if (k === 'NO_SCHEDULE' || k === 'STUDENT_INACTIVE') return out({ error: k }, 403)
+
+      if (k === 'NO_SCHEDULE' || k === 'STUDENT_INACTIVE') {
+        return out({ error: k }, 403)
+      }
+
       notice = k
     }
   }
-  const { data: sess } = await db.from('attendance_sessions').select('check_in_at,scheduled_checkout_at,status')
-    .eq('student_id', st.id).in('status', ['checked_in', 'checkout_requested']).maybeSingle()
-  return out({ name: st.name, state: sess ? 'in' : 'out', session: sess, serverNow: new Date().toISOString(), notice, out_at: outAt })
-}
+
+  if (action === 'checkout') {
+    // 해당 학생의 진행 중인 출결 세션 찾기
+    const { data: activeSession, error: sessionError } = await db
+      .from('attendance_sessions')
+      .select('id')
+      .eq('student_id', st.id)
+      .in('status', ['checked_in', 'checkout_requested'])
+      .maybeSingle()
+
+    if (sessionError) {
+      return out({ error: 'SERVER' }, 500)
+    }
+
+    if (!activeSession) {
+      notice = 'NOT_CHECKED_IN'
+    } else {
+      // 퇴실 요청만 하는 것이 아니라 실제 퇴실 완료 처리
+      const r = await db.rpc('complete_checkout', {
+        p_session: activeSession.id,
+        p_actor: null
+      })
+
+      if (r.error) {
+        const k = [
+          'NOT_CHECKED_IN'
+        ].find((x) => r.error!.message.includes(x))
+
+        if (!k) return out({ error: 'SERVER' }, 500)
+
+        notice = k
+      } else {
+        outAt = r.data?.actual_checkout_at ?? null
+      }
+    }
+  }
