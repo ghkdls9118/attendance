@@ -38,7 +38,7 @@ export function buildRows(date: string, now: Date, students: any[], schedules: a
   const today = seoulDate(now)
   const rows: any[] = []
   const withSession = new Set<string>()
-  const base = (st: any) => ({ school: st?.class_name, grade: st?.grade, gphone: st?.guardian_phone, sphone: st?.student_phone })
+  const base = (st: any) => ({ school: st?.class_name, grade: st?.grade, gphone: st?.guardian_phone, sphone: st?.student_phone, code: st?.attendance_code })
   for (const s of sessions) {
     withSession.add(s.student_id)
     const st = byId.get(s.student_id)

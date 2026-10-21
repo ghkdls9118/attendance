@@ -24,7 +24,7 @@ export default function Dashboard() {
   useEffect(() => setIsAdmin(roleOf() === 'admin'), [])
   const load = useCallback(async () => {
     const [st, sc, se, ex, cfg] = await Promise.all([
-      sb.from('students').select('id,name,grade,class_name,active,guardian_phone,student_phone'),
+      sb.from('students').select('id,name,grade,class_name,active,guardian_phone,student_phone,attendance_code'),
       sb.from('schedules').select('*').eq('active', true),
       sb.from('attendance_sessions').select('*').eq('attendance_date', date),
       sb.from('schedule_exceptions').select('*').eq('exception_date', date),
@@ -117,7 +117,7 @@ export default function Dashboard() {
             const s = r.session
             return (
               <tr key={r.key} className={r.state === 'unarrived' ? (r.alert ? 'row-late' : 'row-wait') : ''}>
-                <td>{r.name}{s?.absence_reason && <small> · {s.absence_reason}</small>}</td>
+                <td>{r.name}{r.code && <small> ({r.code})</small>}{s?.absence_reason && <small> · {s.absence_reason}</small>}</td>
                 <td>{r.school || '-'}</td>
                 <td>{r.grade ? r.grade + '학년' : '-'}</td>
                 <td><span className={'badge ' + STATUS[r.state].cls}>{STATUS[r.state].label}</span>{r.alert && <small> (허용시간 초과)</small>}</td>

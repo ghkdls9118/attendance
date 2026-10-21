@@ -12,7 +12,7 @@ function Student({ s, sch, isAdmin, reload, showCode }: any) {
   const done = async (body: any) => { const j = await api({ student_id: s.id, ...body }); if (j) { if (j.code) showCode(s.name, j.code); reload() } }
   return (
     <details className="stu">
-      <summary>{s.name} <small>{s.grade ? s.grade + '학년' : ''} {s.class_name || ''}</small> {!s.active && <span className="badge s-done">비활성</span>}</summary>
+      <summary>{s.name}{s.attendance_code && <small> ({s.attendance_code})</small>} <small>{s.grade ? s.grade + '학년' : ''} {s.class_name || ''}</small> {!s.active && <span className="badge s-done">비활성</span>}</summary>
       <div className="form">
         <input value={f.name} disabled={!isAdmin} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="이름" />
         <input value={f.grade} disabled={!isAdmin} onChange={(e) => setF({ ...f, grade: e.target.value })} placeholder="학년" type="number" />
@@ -51,7 +51,7 @@ export default function Students() {
   const [f, setF] = useState({ name: '', grade: '', class_name: '', guardian_phone: '', student_phone: '' })
   useEffect(() => setIsAdmin(roleOf() === 'admin'), [])
   const reload = useCallback(async () => {
-    const a = await sb.from('students').select('id,name,grade,class_name,active,guardian_phone,student_phone').order('name')
+    const a = await sb.from('students').select('id,name,grade,class_name,active,guardian_phone,student_phone,attendance_code').order('name')
     const b = await sb.from('schedules').select('*').order('weekday')
     setList(a.data || []); setSch(b.data || [])
   }, [sb])

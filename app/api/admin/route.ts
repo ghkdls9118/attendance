@@ -23,8 +23,17 @@ export async function POST(req: NextRequest) {
 
   try {
     switch (b.action) {
-      case 'sweep':
-        await db.rpc('close_expired'); return out({ ok: true })
+      case 'sweep': {
+        await db.rpc('close_expired')
+        // 대시보드 표시용: 아직 번호가 저장되지 않은 기존 학생의 번호를 해시에서 복원 (00~99)
+        const { data: missing } = await db.from('students').select('id,attendance_code_hash').is('attendance_code', null)
+        if (missing && missing.length) {
+          const map = new Map<string, string>()
+          for (let i = 0; i < 100; i++) { const c = String(i).padStart(2, '0'); map.set(hashCode(c), c) }
+          for (const s of missing) { const c = map.get(s.attendance_code_hash); if (c) await db.from('students').update({ attendance_code: c }).eq('id', s.id) }
+        }
+        return out({ ok: true })
+      }
 
       case 'absent': {
         const reason = needReason(), date = str(b.date, 10)
@@ -63,7 +72,7 @@ export async function POST(req: NextRequest) {
         const name = str(b.name, 40); if (!name) throw new Error('이름을 입력하세요.')
         for (let i = 0; i < 400; i++) {
           const code = randomCode()
-          const r = await db.from('students').insert({ name, grade: b.grade ? +b.grade : null, class_name: str(b.class_name, 40) || null, guardian_phone: phoneOf(b.guardian_phone), student_phone: phoneOf(b.student_phone), attendance_code_hash: hashCode(code) }).select('id,name').single()
+          const r = await db.from('students').insert({ name, grade: b.grade ? +b.grade : null, class_name: str(b.class_name, 40) || null, guardian_phone: phoneOf(b.guardian_phone), student_phone: phoneOf(b.student_phone), attendance_code_hash: hashCode(code), attendance_code: code }).select('id,name').single()
           if (r.error?.code === '23505') continue
           const row = must(r); await log('student_create', 'student', row.id, null, { name }); return out({ ok: true, code, name })
         }
@@ -87,7 +96,7 @@ export async function POST(req: NextRequest) {
         adminOnly()
         for (let i = 0; i < 400; i++) {
           const code = randomCode()
-          const r = await db.from('students').update({ attendance_code_hash: hashCode(code) }).eq('id', b.student_id)
+          const r = await db.from('students').update({ attendance_code_hash: hashCode(code), attendance_code: code }).eq('id', b.student_id)
           if (r.error?.code === '23505') continue
           must(r); await log('reset_code', 'student', b.student_id, null, null); return out({ ok: true, code })
         }
